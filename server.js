@@ -2,15 +2,15 @@ require("dotenv").config({ path: "./config/.env" });
 const express = require("express");
 app = express();
 const PORT = process.env.PORT || 5000;
-
+const passport = require('passport')
 const userRouter = require("./app/router/userRouter");
+
 require("./config/connection");
-
-
-
-
+require('./config/passport');
+app.use(passport.initialize());
 
 app.use(express.json())
+app.use('/upload', express.static('upload'))
 app.use(userRouter);
 
 app.all("*", (req, res) => {

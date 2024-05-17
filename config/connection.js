@@ -1,10 +1,8 @@
 const mongoose = require("mongoose");
 
-mongoose.connect("mongodb+srv://sahilnexios:PvCNYoO1aT3q8Qx2@cluster0.zsraiar.mongodb.net/test", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
+mongoose.connect(process.env.DB_URL, {
 }).then(() => {
-    console.log("connection Succesfully")
+    console.log("Connection Successfully")
 }).catch((err) => {
     console.log("connection faield", err)
 })
