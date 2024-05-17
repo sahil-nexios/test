@@ -92,9 +92,12 @@ const viewAll_blog = async (req, res) => {
 
 const View_Blog = async (req, res) => {
     try {
-        const findblog = await blogModel.findById(req.params.id)
+        const findblog = await blogModel.findById(req.params.id).select('-createdAt -updatedAt -__v');
         if (!findblog) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "Blog Not Found !" })
-        return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, message: "Blogs !", data: findblog })
+        const blogObject = findblog.toObject();
+        blogObject.Publish_Date = moment(findblog.createdAt).format('YYYY-MM-DD HH:mm:ss');
+        blogObject.Update_Date = moment(findblog.updatedAt).format('YYYY-MM-DD HH:mm:ss');
+        return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, message: "Blogs !", data: blogObject })
     } catch (error) {
         console.log("🚀 ~ constviewAll_blog= ~ error:", error)
         return res.status(HTTP.SUCCESS).send({ code: HTTP.INTERNAL_SERVER_ERROR, status: false, message: "Something Went Wrong !", });
