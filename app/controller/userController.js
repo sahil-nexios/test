@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const blogModel = require("../model/blogModel");
 const fs = require('fs')
 const moment = require('moment');
-
+const Subscription = require("../model/subscription")
 
 const signup = async (req, res) => {
     try {
@@ -160,9 +160,151 @@ const Search_Blog = async (req, res) => {
     }
 }
 
+const create_subscription = async (req, res) => {
+    try {
+        const user = await userModel.findById(req.user._id);
+        if (!user) {
+            return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "User Not Found !" });
+        }
+        const subscription = new Subscription({
+            type: req.body.type,
+            user: user._id,
+        });
 
+        const savedSubscription = await subscription.save();
+        user.plan.push(savedSubscription._id);
+        await user.save();
+        return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, message: "subscription added succesfully !", })
+    } catch (error) {
+        console.log("🚀 ~ constcreate_subscription= ~ error:", error)
+        return res.status(HTTP.SUCCESS).send({ code: HTTP.INTERNAL_SERVER_ERROR, status: false, message: "Something Went Wrong !", });
+    }
+}
 
+const view_usersubscription = async (req, res) => {
+    try {
+        const user = await userModel.aggregate([
+            { $match: { _id: req.user._id } },
+            {
+                $lookup: {
+                    from: 'subscriptions',
+                    localField: 'plan',
+                    foreignField: '_id',
+                    as: 'plans'
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    email: 1,
+                    plans: 1,
+                }
+            }
+        ]);
+        if (!user.length) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
+        return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, data: user[0], })
+
+    } catch (error) {
+        console.log("🚀 ~ constview_usersubscription= ~ error:", error)
+        return res.status(HTTP.SUCCESS).send({ code: HTTP.INTERNAL_SERVER_ERROR, status: false, message: "Something Went Wrong !", });
+    }
+}
+
+const view_allsubscriptions = async (req, res) => {
+    try {
+        const subscriptions = await Subscription.aggregate([
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'user',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+            {
+                $unwind: '$userDetails'
+            },
+            {
+                $group: {
+                    _id: '$type',
+                    users: { $push: '$userDetails' }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    type: '$_id',
+                    users: {
+                        name: 1,
+                        email: 1,
+                    }
+                }
+            }
+        ]);
+
+        const result = {};
+        subscriptions.forEach(sub => {
+            result[sub.type] = sub.users;
+        });
+        res.json(result);
+    } catch (error) {
+        console.log("🚀 ~ constview_allsubscriptions= ~ error:", error)
+        return res.status(HTTP.SUCCESS).send({ code: HTTP.INTERNAL_SERVER_ERROR, status: false, message: "Something Went Wrong !", });
+    }
+}
+
+const weekly_average = async (req, res) => {
+    try {
+        const weeklySubscriptions = await Subscription.aggregate([
+            {
+                $group: {
+                    _id: {
+                        dayOfWeek: { $dayOfWeek: "$purchaseDate" },
+                        type: "$type"
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $group: {
+                    _id: "$_id.dayOfWeek",
+                    types: {
+                        $push: {
+                            type: "$_id.type",
+                            count: "$count"
+                        }
+                    }
+                }
+            },
+            {
+                $sort: { _id: 1 }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    dayOfWeek: "$_id",
+                    types: 1
+                }
+            }
+        ]);
+
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const formattedResult = daysOfWeek.map((day, index) => {
+            const dayData = weeklySubscriptions.find(item => item.dayOfWeek === index + 1);
+            return {
+                dayname: day,
+                types: dayData ? dayData.types : []
+            };
+        });
+
+        res.json(formattedResult);
+    } catch (error) {
+        return res.status(HTTP.SUCCESS).send({ code: HTTP.INTERNAL_SERVER_ERROR, status: false, message: "Something Went Wrong !", });
+    }
+}
 
 module.exports = {
     signup,
@@ -172,5 +314,9 @@ module.exports = {
     View_Blog,
     Update_Blog,
     Delete_Blog,
-    Search_Blog
+    Search_Blog,
+    create_subscription,
+    view_usersubscription,
+    view_allsubscriptions,
+    weekly_average
 };
