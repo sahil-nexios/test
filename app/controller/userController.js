@@ -306,6 +306,46 @@ const weekly_average = async (req, res) => {
     }
 }
 
+const view_subscription_category = async (req, res) => {
+    try {
+        const subscriptions = await Subscription.aggregate([
+            {
+                $match: { type: req.body.type }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'user',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+            {
+                $unwind: '$userDetails'
+            },
+            {
+                $group: {
+                    _id: "$type",
+                    users: {
+                        $push: {
+                            name: "$userDetails.name",
+                            email: "$userDetails.email"
+                        }
+                    }
+                }
+            },
+        ]);
+
+        res.json(subscriptions[0]);
+    } catch (error) {
+        return res.status(HTTP.SUCCESS).send({ code: HTTP.INTERNAL_SERVER_ERROR, status: false, message: "Something Went Wrong !", });
+    }
+}
+
+
+
+
+
 module.exports = {
     signup,
     login,
@@ -318,5 +358,6 @@ module.exports = {
     create_subscription,
     view_usersubscription,
     view_allsubscriptions,
-    weekly_average
+    weekly_average,
+    view_subscription_category
 };
