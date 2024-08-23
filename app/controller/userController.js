@@ -10,6 +10,7 @@ const Subscription = require("../model/subscription")
 const signup = async (req, res) => {
     try {
         const { name, email, password } = req.body
+        console.log("🚀 ~ signup ~  req.body:", req.body)
         if (!name || !email || !password) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.BAD_REQUEST, message: "All Fields Are Required !" })
         if (!email.includes("@")) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.BAD_REQUEST, message: "Please Enter Valid Email !" })
         const finuser = await userModel.findOne({ email: email })
@@ -49,9 +50,9 @@ const add_blog = async (req, res) => {
     try {
         const { title, content, category } = req.body
         if (!title || !content || !category) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.BAD_REQUEST, message: "All Fields Are Required !" })
-        if (!req.file) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.BAD_REQUEST, message: "Please Upload Image !" })
-        const image = `upload/images/${req.file.filename}`
-        new blogModel({ ...req.body, image: image, auther_id: req.user._id }).save()
+        // if (!req.file) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.BAD_REQUEST, message: "Please Upload Image !" })
+        // const image = `upload/images/${req.file.filename}`
+        new blogModel({ ...req.body, auther_id: req.user._id }).save()
         return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, message: "Blog Added Successfully !" })
 
     } catch (error) {
@@ -63,26 +64,22 @@ const add_blog = async (req, res) => {
 
 const viewAll_blog = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 5;
-        const totalItems = await blogModel.countDocuments();
-        const totalPages = Math.ceil(totalItems / limit);
-        const skip = (page - 1) * limit;
-        const findblog = await blogModel.find({ auther_id: req.user._id }, { createdAt: 0, updatedAt: 0, __v: 0 }).skip(skip).limit(limit)
+        // const page = parseInt(req.query.page) || 1;
+        // const limit = parseInt(req.query.limit) || 5;
+        // const totalItems = await blogModel.countDocuments();
+        // const totalPages = Math.ceil(totalItems / limit);
+        // const skip = (page - 1) * limit;
+        const findblog = await blogModel.find({ auther_id: req.user._id }, { createdAt: 0, updatedAt: 0, __v: 0 })
         if (findblog.length <= 0) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "Blog Not Found !" })
-        const formattedBlogs = findblog.map(blog => {
-            const formattedBlog = blog.toObject();
-            formattedBlog.Publish_Date = moment(blog.createdAt).format('YYYY-MM-DD HH:mm:ss');
-            formattedBlog.Update_Date = moment(blog.updatedAt).format('YYYY-MM-DD HH:mm:ss');
-            return formattedBlog;
-        });
+        // const formattedBlogs = findblog.map(blog => {
+        //     const formattedBlog = blog.toObject();
+        //     formattedBlog.Publish_Date = moment(blog.createdAt).format('YYYY-MM-DD HH:mm:ss');
+        //     formattedBlog.Update_Date = moment(blog.updatedAt).format('YYYY-MM-DD HH:mm:ss');
+        //     return formattedBlog;
+        // });
         return res.status(HTTP.SUCCESS).send({
-            status: true, code: HTTP.SUCCESS, message: "Blogs !", data: {
-                totalItems,
-                totalPages,
-                currentPage: page,
-                formattedBlogs
-            }
+            status: true, code: HTTP.SUCCESS, message: "Blogs !", data:
+                findblog,
         })
     } catch (error) {
         console.log("🚀 ~ constviewAll_blog= ~ error:", error)
@@ -109,12 +106,12 @@ const Update_Blog = async (req, res) => {
         const findblog = await blogModel.findById(req.params.id);
         if (!findblog) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "Blog Not Found !" });
         if (!findblog.auther_id.equals(req.user._id)) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "Invalid Credentials !" });
-        let image;
-        if (req.file) {
-            fs.unlinkSync(findblog.image)
-            image = `upload/images/${req.file.filename}`
-        }
-        await blogModel.findByIdAndUpdate(req.params.id, { $set: { ...req.body, image: image } })
+        // let image;
+        // if (req.file) {
+        //     fs.unlinkSync(findblog.image)
+        //     image = `upload/images/${req.file.filename}`
+        // }
+        await blogModel.findByIdAndUpdate(req.params.id, { $set: { ...req.body } })
         return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, message: "Blog Update Succesfully !" })
 
     } catch (error) {
@@ -129,7 +126,7 @@ const Delete_Blog = async (req, res) => {
         const findblog = await blogModel.findById(req.params.id);
         if (!findblog) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "Blog Not Found !" });
         if (!findblog.auther_id.equals(req.user._id)) return res.status(HTTP.SUCCESS).send({ status: false, code: HTTP.NOT_FOUND, message: "Invalid Credentials !" });
-        fs.unlinkSync(findblog.image)
+        // fs.unlinkSync(findblog.image)
         await blogModel.findByIdAndDelete(req.params.id)
         return res.status(HTTP.SUCCESS).send({ status: true, code: HTTP.SUCCESS, message: "Blog Delete Succesfully !" })
 
